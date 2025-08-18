@@ -22,10 +22,13 @@ final class MainViewController: UIViewController {
     private let pickedImageView = UIImageView()
     private let saveButton = UIButton(type: .system)
 
-        //저장된 다짐카드들을 보여줄 테이블뷰
-    private let tableView = UITableView(frame: .zero, style: .plain)
+    // 저장된 다짐카드들을 보여줄 테이블뷰
+    // private let tableView = UITableView(frame: .zero, style: .plain)
+    
+    // 컬렉션뷰로 변경
+    private var collectionView: UICollectionView!
         
-        //실제 데이터를 저장할 배열
+    //실제 데이터를 저장할 배열
     private var entries: [Entry] = []
 
     override func viewDidLoad() {
@@ -33,14 +36,14 @@ final class MainViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "내일배움캠프를 시작하며"
                 
-                // 초기화면
+        // 초기화면
         setupBackground()
         setupNavBar()
         setupInputArea()
-        setupTableView()
+        setupCollectionView() // 호출함수 교체
     }
         
-        // 배경 이미지뷰
+    // 배경 이미지뷰
     private func setupBackground() {
         backgroundImageView.contentMode = .scaleAspectFill
         backgroundImageView.clipsToBounds = true
@@ -124,22 +127,40 @@ final class MainViewController: UIViewController {
     }
     
     
-    // 테이블 뷰 설정
-    private func setupTableView() {
-        view.addSubview(tableView)
-        tableView.backgroundColor = .clear
-        tableView.separatorStyle = .singleLine
-        tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+    // 원래 테이블 뷰 설정 코드였음
+    
+    // setupCollectionView()로 교체
+    private func setupCollectionView() {
+        // 2열 정사각형 그리드 레이아웃
+        let layout = UICollectionViewFlowLayout()
+        layout.minimumLineSpacing = 10
+        layout.minimumInteritemSpacing = 10
 
-        tableView.translatesAutoresizingMaskIntoConstraints = false
+        let horizontalPadding: CGFloat = 16   // 좌우 안전영역 여백과 맞추기
+        let interItemSpacing: CGFloat = 10
+        let columns: CGFloat = 2
+
+        let totalSpacing = (interItemSpacing * (columns - 1)) + (horizontalPadding * 2)
+        let itemWidth = (view.bounds.width - totalSpacing) / columns
+        layout.itemSize = CGSize(width: itemWidth, height: itemWidth + 80)
+
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.backgroundColor = .clear
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: horizontalPadding, bottom: 0, right: horizontalPadding)
+        collectionView.register(CardCell.self, forCellWithReuseIdentifier: CardCell.reuseID)
+
+        view.addSubview(collectionView)
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: saveButton.bottomAnchor, constant: 20),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            collectionView.topAnchor.constraint(equalTo: saveButton.bottomAnchor, constant: 20),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
     }
+    
     
     // 이미지 선택 버튼을 눌렀을 때
     @objc private func pickCardImageTapped() {
@@ -152,12 +173,12 @@ final class MainViewController: UIViewController {
         present(picker, animated: true)
     }
         
-        // 다짐 저장 버튼을 눌렀을 때
+    // 다짐 저장 버튼을 눌렀을 때
     @objc private func saveTapped() {
         let titleText = (titleField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let contentText = (contentTextView.textColor == .secondaryLabel) ? "" : (contentTextView.text ?? "")
                 
-                // 제목/내용/이미지 중 아무 입력도 없으면 알림창을 띄운다.
+        // 제목/내용/이미지 중 아무 입력도 없으면 알림창을 띄운다.
         if titleText.isEmpty && contentText.isEmpty && pickedImageView.image == nil {
             let alert = UIAlertController(title: "입력 필요",
                                           message: "제목, 내용, 이미지 중 하나 이상 입력하세요.",
@@ -167,7 +188,7 @@ final class MainViewController: UIViewController {
             return
         }
                 
-                // 새로운 '다짐' 생성 후 -> 배열에 추가
+        // 새로운 '다짐' 생성 후 -> 배열에 추가
         let entry = Entry(
             title: titleText.isEmpty ? "무제" : titleText,
             content: contentText.isEmpty ? "내용 없음" : contentText,
@@ -175,9 +196,9 @@ final class MainViewController: UIViewController {
             createdAt: Date()
         )
         entries.insert(entry, at: 0)
-        tableView.reloadData()
+        collectionView.reloadData() // 데이터 리로드 지점 수정
                 
-                // 입력 영역 전부 초기화
+        // 입력 영역 전부 초기화
         titleField.text = nil
         contentTextView.text = "오늘의 학습 목표 또는 다짐을 적어보세요."
         contentTextView.textColor = .secondaryLabel
@@ -222,34 +243,30 @@ extension MainViewController: UITextViewDelegate {
     }
 }
 
-// 테이블 뷰 데이터소스
-extension MainViewController: UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        entries.count
+extension MainViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return entries.count
     }
 
-    func tableView(_ tableView: UITableView,
-                   cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let entry = entries[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-
-        var content = UIListContentConfiguration.subtitleCell()
-        content.text = entry.title
-        content.secondaryText = entry.content
-        content.secondaryTextProperties.numberOfLines = 0
-
-        if let img = entry.image {
-            content.image = img
-            content.imageProperties.maximumSize = CGSize(width: 60, height: 60)
-            content.imageProperties.cornerRadius = 8
-        }
-
-        cell.contentConfiguration = content
-        cell.backgroundColor = .secondarySystemBackground
-        cell.layer.cornerRadius = 12
-        cell.layer.masksToBounds = true
-
+    func collectionView(_ collectionView: UICollectionView,
+                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: CardCell.reuseID, for: indexPath) as! CardCell
+        cell.configure(with: entries[indexPath.item])
         return cell
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let entry = entries[indexPath.item]
+        guard let img = entry.image else { return }
+
+        let vc = UIViewController()
+        vc.view.backgroundColor = .black
+        let iv = UIImageView(image: img)
+        iv.contentMode = .scaleAspectFit
+        iv.frame = vc.view.bounds
+        iv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        vc.view.addSubview(iv)
+        present(vc, animated: true)
     }
 }
 
