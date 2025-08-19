@@ -76,3 +76,4 @@ final class CardCell: UICollectionViewCell {
         imageView.image = nil
     }
 }
+
