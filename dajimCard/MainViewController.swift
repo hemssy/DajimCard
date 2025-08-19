@@ -1,57 +1,44 @@
 import UIKit
 import PhotosUI
 
-// 한 장의 다짐 카드를 만드는 구조체
+// 다짐 카드 한장을 만드는 Entry 구조체 (모달의 입력영역!)
 struct Entry {
-    let title: String // 다짐의 제목
-    let content: String // 다짐의 내용
-    let image: UIImage? // 저장하는 이미지
-    let createdAt: Date // 저장된 시간
+    let title: String
+    let content: String
+    let image: UIImage?
+    let createdAt: Date
 }
 
 final class MainViewController: UIViewController {
-    
-    private let backgroundImageView = UIImageView() // 배경 이미지
-    
-    // 제목, 내용
-    private let titleField = UITextField()
-    private let contentTextView = UITextView()
-    
-    // 이미지 선택 버튼/뷰/저장 버튼
-    private let pickImageButton = UIButton(type: .system)
-    private let pickedImageView = UIImageView()
-    private let saveButton = UIButton(type: .system)
 
-    // 저장된 다짐카드들을 보여줄 테이블뷰
-    // private let tableView = UITableView(frame: .zero, style: .plain)
-    
-    // 컬렉션뷰로 변경
+    private let backgroundImageView = UIImageView()
+
+    // 컬렉션뷰 + 하단 버튼
     private var collectionView: UICollectionView!
-        
-    //실제 데이터를 저장할 배열
+    private let addEntryButton = UIButton(type: .system)
+
+    // 데이터
     private var entries: [Entry] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         title = "내일배움캠프를 시작하며"
-                
-        // 초기화면
+
         setupBackground()
         setupNavBar()
-        setupInputArea()
-        setupCollectionView() // 호출함수 교체
+        setupAddEntryButton()
+        setupCollectionView()
     }
-        
-    // 배경 이미지뷰
+
+    // MARK: - UI 구성
+
     private func setupBackground() {
         backgroundImageView.contentMode = .scaleAspectFill
         backgroundImageView.clipsToBounds = true
 
         view.addSubview(backgroundImageView)
-
         backgroundImageView.translatesAutoresizingMaskIntoConstraints = false
-
         NSLayoutConstraint.activate([
             backgroundImageView.topAnchor.constraint(equalTo: view.topAnchor),
             backgroundImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -59,8 +46,7 @@ final class MainViewController: UIViewController {
             backgroundImageView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
-        // 네비게이션 바 우측의 "배경 변경" 버튼
+
     private func setupNavBar() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "배경 변경",
@@ -69,8 +55,7 @@ final class MainViewController: UIViewController {
             action: #selector(changeBackgroundTapped)
         )
     }
-        
-        // 배경 변경 버튼 눌렀을 때 앨범에서 이미지 선택하기
+
     @objc private func changeBackgroundTapped() {
         var config = PHPickerConfiguration(photoLibrary: .shared())
         config.selectionLimit = 1
@@ -78,68 +63,18 @@ final class MainViewController: UIViewController {
 
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = self
-        picker.view.tag = 1001 // 배경 이미지 선택인거 구분!
+        picker.view.tag = 1001
         present(picker, animated: true)
     }
-    
-    // 다짐 입력 부분
-    private func setupInputArea() {
-        titleField.placeholder = "제목 입력"
-        titleField.borderStyle = .roundedRect
 
-        contentTextView.font = .systemFont(ofSize: 16)
-        contentTextView.layer.borderWidth = 1
-        contentTextView.layer.borderColor = UIColor.separator.cgColor
-        contentTextView.layer.cornerRadius = 8
-        contentTextView.text = "오늘의 학습 목표 또는 다짐을 적어보세요."
-        contentTextView.textColor = .secondaryLabel
-        contentTextView.heightAnchor.constraint(equalToConstant: 90).isActive = true
-        contentTextView.delegate = self
-
-        pickImageButton.setTitle("이미지 선택", for: .normal)
-        pickImageButton.addTarget(self, action: #selector(pickCardImageTapped), for: .touchUpInside)
-
-        pickedImageView.contentMode = .scaleAspectFill
-        pickedImageView.clipsToBounds = true
-        pickedImageView.layer.cornerRadius = 8
-        pickedImageView.backgroundColor = .secondarySystemBackground
-        pickedImageView.heightAnchor.constraint(equalToConstant: 120).isActive = true
-
-        saveButton.setTitle("다짐 저장", for: .normal)
-        saveButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
-        saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
-                
-                // 입력 UI 스택뷰로 만들기
-        let stack = UIStackView(arrangedSubviews: [
-            titleField, contentTextView, pickImageButton, pickedImageView, saveButton
-        ])
-        stack.axis = .vertical
-        stack.spacing = 12
-
-        view.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-        ])
-    }
-    
-    
-    // 원래 테이블 뷰 설정 코드였음
-    
-    // setupCollectionView()로 교체
     private func setupCollectionView() {
-        // 2열 정사각형 그리드 레이아웃
         let layout = UICollectionViewFlowLayout()
         layout.minimumLineSpacing = 10
         layout.minimumInteritemSpacing = 10
 
-        let horizontalPadding: CGFloat = 16   // 좌우 안전영역 여백과 맞추기
+        let horizontalPadding: CGFloat = 16
         let interItemSpacing: CGFloat = 10
         let columns: CGFloat = 2
-
         let totalSpacing = (interItemSpacing * (columns - 1)) + (horizontalPadding * 2)
         let itemWidth = (view.bounds.width - totalSpacing) / columns
         layout.itemSize = CGSize(width: itemWidth, height: itemWidth + 80)
@@ -148,65 +83,61 @@ final class MainViewController: UIViewController {
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.alwaysBounceVertical = true
         collectionView.contentInset = UIEdgeInsets(top: 0, left: horizontalPadding, bottom: 0, right: horizontalPadding)
         collectionView.register(CardCell.self, forCellWithReuseIdentifier: CardCell.reuseID)
 
         view.addSubview(collectionView)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: saveButton.bottomAnchor, constant: 20),
+            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            collectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            collectionView.bottomAnchor.constraint(equalTo: addEntryButton.topAnchor, constant: -12)
         ])
     }
-    
-    
-    // 이미지 선택 버튼을 눌렀을 때
-    @objc private func pickCardImageTapped() {
-        var config = PHPickerConfiguration(photoLibrary: .shared())
-        config.selectionLimit = 1
-        config.filter = .images
-        let picker = PHPickerViewController(configuration: config)
-        picker.delegate = self
-        picker.view.tag = 2002
-        present(picker, animated: true)
-    }
+
+    private func setupAddEntryButton() {
+        addEntryButton.setTitle("다짐 입력하기", for: .normal)
+        addEntryButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        addEntryButton.backgroundColor = .systemBlue
+        addEntryButton.tintColor = .white
+        addEntryButton.layer.cornerRadius = 12
+        addEntryButton.addTarget(self, action: #selector(presentEditor), for: .touchUpInside)
+
+        view.addSubview(addEntryButton)
+        addEntryButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            addEntryButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            addEntryButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            addEntryButton.widthAnchor.constraint(equalToConstant: 200),
+            addEntryButton.heightAnchor.constraint(equalToConstant: 48)
+        ])
+
         
-    // 다짐 저장 버튼을 눌렀을 때
-    @objc private func saveTapped() {
-        let titleText = (titleField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let contentText = (contentTextView.textColor == .secondaryLabel) ? "" : (contentTextView.text ?? "")
-                
-        // 제목/내용/이미지 중 아무 입력도 없으면 알림창을 띄운다.
-        if titleText.isEmpty && contentText.isEmpty && pickedImageView.image == nil {
-            let alert = UIAlertController(title: "입력 필요",
-                                          message: "제목, 내용, 이미지 중 하나 이상 입력하세요.",
-                                          preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "확인", style: .default))
-            present(alert, animated: true)
-            return
+        view.bringSubviewToFront(addEntryButton)
+    }
+
+    @objc private func presentEditor() {
+        let editor = EntryEditorViewController()
+        editor.onSave = { [weak self] entry in
+            guard let self = self else { return }
+            self.entries.insert(entry, at: 0)
+            self.collectionView.reloadData()
         }
-                
-        // 새로운 '다짐' 생성 후 -> 배열에 추가
-        let entry = Entry(
-            title: titleText.isEmpty ? "무제" : titleText,
-            content: contentText.isEmpty ? "내용 없음" : contentText,
-            image: pickedImageView.image,
-            createdAt: Date()
-        )
-        entries.insert(entry, at: 0)
-        collectionView.reloadData() // 데이터 리로드 지점 수정
-                
-        // 입력 영역 전부 초기화
-        titleField.text = nil
-        contentTextView.text = "오늘의 학습 목표 또는 다짐을 적어보세요."
-        contentTextView.textColor = .secondaryLabel
-        pickedImageView.image = nil
+
+        let nav = UINavigationController(rootViewController: editor)
+        nav.modalPresentationStyle = .pageSheet
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(nav, animated: true)
     }
 }
 
-// 앨범에서 이미지 가져오기 처리
+
+// MARK: - PHPicker 델리게이트
 extension MainViewController: PHPickerViewControllerDelegate {
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
@@ -214,35 +145,18 @@ extension MainViewController: PHPickerViewControllerDelegate {
         guard let provider = results.first?.itemProvider,
               provider.canLoadObject(ofClass: UIImage.self) else { return }
 
-        provider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
+        provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
             guard let self = self, let image = object as? UIImage else { return }
             DispatchQueue.main.async {
                 if picker.view.tag == 1001 {
                     self.backgroundImageView.image = image
-                } else if picker.view.tag == 2002 {
-                    self.pickedImageView.image = image
                 }
             }
         }
     }
 }
 
-// 텍스트뷰 플레이스홀더 처리(기본 텍스트)
-extension MainViewController: UITextViewDelegate {
-    func textViewDidBeginEditing(_ textView: UITextView) {
-        if textView.textColor == .secondaryLabel {
-            textView.text = nil
-            textView.textColor = .label
-        }
-    }
-    func textViewDidEndEditing(_ textView: UITextView) {
-        if (textView.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            textView.text = "오늘의 학습 목표 또는 다짐 한마디를 적어보세요."
-            textView.textColor = .secondaryLabel
-        }
-    }
-}
-
+// MARK: - 컬렉션뷰 데이터소스/델리게이트
 extension MainViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return entries.count
@@ -269,4 +183,5 @@ extension MainViewController: UICollectionViewDataSource, UICollectionViewDelega
         present(vc, animated: true)
     }
 }
+
 
